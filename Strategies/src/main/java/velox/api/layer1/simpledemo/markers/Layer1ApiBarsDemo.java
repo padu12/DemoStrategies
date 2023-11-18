@@ -269,7 +269,7 @@ public class Layer1ApiBarsDemo implements
 
     private static final int MAX_BODY_WIDTH = 30;
     private static final int MIN_BODY_WIDTH = 1;
-    private static final long CANDLE_INTERVAL_NS = TimeUnit.SECONDS.toNanos(30);
+    private static final long CANDLE_INTERVAL_NS = TimeUnit.SECONDS.toNanos(60);
     
     private Layer1ApiProvider provider;
     
