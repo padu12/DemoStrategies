@@ -4,8 +4,6 @@ import java.awt.Color;
 
 public class LastBarProperties {
     private int height;
-    private int top;
-    private int bottom;
     private Color color;
     private int currentTrendDetectionHealth;
     private boolean isFirst;
@@ -20,22 +18,6 @@ public class LastBarProperties {
 
     public void setHeight(int height) {
         this.height = height;
-    }
-
-    public int getTop() {
-        return top;
-    }
-
-    public void setTop(int top) {
-        this.top = top;
-    }
-
-    public int getBottom() {
-        return bottom;
-    }
-
-    public void setBottom(int bottom) {
-        this.bottom = bottom;
     }
 
     public Color getColor() {

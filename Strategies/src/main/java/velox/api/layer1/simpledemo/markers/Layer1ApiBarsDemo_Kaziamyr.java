@@ -201,8 +201,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             if (lastBarProperties.isFirst()) {
                 lastBarProperties.setFirst(false);
                 lastBarProperties.setHeight(1);
-                lastBarProperties.setTop(top);
-                lastBarProperties.setBottom(bottom);
                 lastBarProperties.setColor(currentColor);
                 lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
                 return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
@@ -227,8 +225,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             }
 
             lastBarProperties.setHeight(height);
-            lastBarProperties.setTop(top);
-            lastBarProperties.setBottom(bottom);
             lastBarProperties.setColor(graphics.getColor());
 
             height *= 2;
