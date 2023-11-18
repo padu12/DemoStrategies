@@ -1,8 +1,15 @@
 package velox.api.layer1.simpledemo.markers;
 
+import java.awt.Button;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,10 +20,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javax.swing.JTextField;
 import velox.api.layer1.Layer1ApiAdminAdapter;
 import velox.api.layer1.Layer1ApiFinishable;
 import velox.api.layer1.Layer1ApiInstrumentListener;
 import velox.api.layer1.Layer1ApiProvider;
+import velox.api.layer1.Layer1CustomPanelsGetter;
 import velox.api.layer1.annotations.Layer1ApiVersion;
 import velox.api.layer1.annotations.Layer1ApiVersionValue;
 import velox.api.layer1.annotations.Layer1Attachable;
@@ -48,6 +57,7 @@ import velox.api.layer1.messages.indicators.Layer1ApiDataInterfaceRequestMessage
 import velox.api.layer1.messages.indicators.Layer1ApiUserMessageModifyIndicator;
 import velox.api.layer1.messages.indicators.Layer1ApiUserMessageModifyIndicator.GraphType;
 import velox.api.layer1.messages.indicators.StrategyUpdateGenerator;
+import velox.gui.StrategyPanel;
 
 @Layer1Attachable
 @Layer1StrategyName("Bars demo (Kaziamyr) <==============")
@@ -56,10 +66,14 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     Layer1ApiFinishable,
     Layer1ApiAdminAdapter,
     Layer1ApiInstrumentListener,
-    OnlineCalculatable {
+    OnlineCalculatable,
+    Layer1CustomPanelsGetter,
+    ActionListener {
 
     private static class BarEvent implements CustomGeneratedEvent, DataCoordinateMarker {
         private static final long serialVersionUID = 1L;
+        private static final int ZERO_OFFSET_Y = 0;
+        private static final double ZERO_MARKER_Y = 0;
         /**
          * While bar is being accumulated we store open time here, then we change it to
          * actual event time.
@@ -164,13 +178,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
         @Override
         public Marker makeMarker(Function<Double, Integer> yDataCoordinateToPixelFunction) {
-
-            /*
-             * Note, that caching and reusing markers would improve efficiency, but for
-             * simplicity we won't do that here. If you do decide to cache the icons - be
-             * mindful of the cache size.
-             */
-
             int top = yDataCoordinateToPixelFunction.apply(high);
             int bottom = yDataCoordinateToPixelFunction.apply(low);
             int openPx = yDataCoordinateToPixelFunction.apply(open);
@@ -179,48 +186,57 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             int bodyLow = Math.min(openPx, closePx);
             int bodyHigh = Math.max(openPx, closePx);
 
-            int imageHeight = top - bottom + 1;
-            BufferedImage bufferedImage = new BufferedImage(bodyWidthPx, imageHeight, BufferedImage.TYPE_INT_ARGB);
+            int imageHeight = 500;
+            BufferedImage bufferedImage = new BufferedImage(bodyWidthPx, imageHeight,
+                    BufferedImage.TYPE_INT_ARGB);
             int imageCenterX = bufferedImage.getWidth() / 2;
+            int iconOffsetX = -imageCenterX;
 
             Graphics2D graphics = bufferedImage.createGraphics();
-            // Clear background
+
             graphics.setBackground(new Color(0, 0, 0, 0));
             graphics.clearRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
 
-            /*
-             * Draw "shadow", also known as "wick". Here we'll take advantage of the fact
-             * we'll later draw a non-transparent body over it. If body would be
-             * semi-transparent you'd have to take that into account and leave (or make) a
-             * gap in the shadow.
-             */
-            graphics.setColor(Color.WHITE);
-            graphics.drawLine(imageCenterX, 0, imageCenterX, imageHeight);
+            Color currentColor = open < close ? Color.GREEN : Color.RED;
+            if (lastBarProperties.isFirst()) {
+                lastBarProperties.setFirst(false);
+                lastBarProperties.setHeight(1);
+                lastBarProperties.setTop(top);
+                lastBarProperties.setBottom(bottom);
+                lastBarProperties.setColor(currentColor);
+                lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+                return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
+            }
 
+            int height;
+            int plus = lastBarProperties.getHeight() + ((bodyHigh - bodyLow) / 3);
+            if (lastBarProperties.getColor().equals(currentColor)) {
+                height = plus;
+                lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+                graphics.setColor(currentColor);
+            } else {
+                if (lastBarProperties.getCurrentTrendDetectionHealth() <= 1) {
+                    height = (bodyHigh - bodyLow) / 2;
+                    lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+                    graphics.setColor(currentColor);
+                } else {
+                    height = plus;
+                    lastBarProperties.decreaseCurrentTrendDetectionHealth();
+                    graphics.setColor(lastBarProperties.getColor());
+                }
+            }
 
-            /*
-             * Draw body. Keep in mind that BufferedImage coordinate system starts from the
-             * left top corner and Y axis points downwards
-             */
-            graphics.setColor(open < close ? Color.GREEN : Color.RED);
-            graphics.fillRect(0, top - bodyHigh, bodyWidthPx, bodyHigh - bodyLow + 1);
+            lastBarProperties.setHeight(height);
+            lastBarProperties.setTop(top);
+            lastBarProperties.setBottom(bottom);
+            lastBarProperties.setColor(graphics.getColor());
+
+            height *= 2;
+
+            graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
 
             graphics.dispose();
-
-            /*
-             * This one is a little tricky. We have a reference point which we'll pass as
-             * markerY. Now we need to compute offsets so that icon is where we want it to
-             * be. Since we took close as a reference point, we want to offset the icon so
-             * that close is at the markerY. Zero offset would align bottom of the icon with
-             * a value, so we do this:
-             */
-            int iconOffsetY = bottom - closePx;
-            /*
-             * This one is simple, we just want to center the bar vertically over where it
-             * should be.
-             */
-            int iconOffsetX = -imageCenterX;
-            return new Marker(close, iconOffsetX, iconOffsetY, bufferedImage);
+            return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
         }
 
         /**
@@ -259,7 +275,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     };
 
     private static final String INDICATOR_NAME_BARS_MAIN = "Bars: main chart";
-    private static final String INDICATOR_NAME_BARS_BOTTOM = "Bars: bottom panel";
+    private static final String INDICATOR_NAME_BARS_BOTTOM = "Bars (Kaziamyr): bottom panel";
     private static final String INDICATOR_LINE_COLOR_NAME = "Trade markers line";
     private static final Color INDICATOR_LINE_DEFAULT_COLOR = Color.RED;
 
@@ -269,6 +285,12 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     private static final int MAX_BODY_WIDTH = 30;
     private static final int MIN_BODY_WIDTH = 1;
     private static final long CANDLE_INTERVAL_NS = TimeUnit.SECONDS.toNanos(60);
+    private static final int DEFAULT_TREND_DETECTION_LENGTH = 2;
+    private static int trendDetectionLength = DEFAULT_TREND_DETECTION_LENGTH;
+    private static final JTextField textField = new JTextField();
+    private static final Button button = new Button("Apply");
+
+    private static final LastBarProperties lastBarProperties = new LastBarProperties();
 
     private Layer1ApiProvider provider;
 
@@ -340,7 +362,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             UserMessageLayersChainCreatedTargeted message = (UserMessageLayersChainCreatedTargeted) data;
             if (message.targetClass == getClass()) {
                 provider.sendUserMessage(new Layer1ApiDataInterfaceRequestMessage(dataStructureInterface -> this.dataStructureInterface = dataStructureInterface));
-                addIndicator(INDICATOR_NAME_BARS_MAIN);
+//                addIndicator(INDICATOR_NAME_BARS_MAIN);
                 addIndicator(INDICATOR_NAME_BARS_BOTTOM);
                 provider.sendUserMessage(getGeneratorMessage(true));
             }
@@ -441,6 +463,42 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                 }
             }
         };
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == button) {
+            System.out.println("Change multiplier to " + textField.getText());
+            trendDetectionLength = Integer.parseInt(textField.getText());
+        }
+    }
+
+    @Override
+    public StrategyPanel[] getCustomGuiFor(String s, String s1) {
+        StrategyPanel panel = new StrategyPanel("Settings", new GridBagLayout());
+
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints gbConst;
+
+        gbConst = new GridBagConstraints();
+        gbConst.gridx = 0;
+        gbConst.gridy = 0;
+        gbConst.weightx = 1;
+        gbConst.insets = new Insets(5, 5, 5, 5);
+        gbConst.fill = 2;
+        textField.setPreferredSize(new Dimension(100,40));
+        textField.addActionListener(this);
+        panel.add(textField, gbConst);
+
+        gbConst = new GridBagConstraints();
+        gbConst.gridx = 0;
+        gbConst.gridy = 1;
+        gbConst.weightx = 1;
+        gbConst.insets = new Insets(5, 5, 5, 5);
+        button.addActionListener(this);
+        panel.add(button, gbConst);
+
+        return new StrategyPanel[] {panel};
     }
     
     private int getBodyWidth(long intervalWidth) {
