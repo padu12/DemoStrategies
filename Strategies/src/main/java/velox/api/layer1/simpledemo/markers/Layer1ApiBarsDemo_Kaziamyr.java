@@ -295,10 +295,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
     private DataStructureInterface dataStructureInterface;
 
-    private final Map<String, BufferedImage> orderIcons = Collections.synchronizedMap(new HashMap<>());
-
-    private final Object locker = new Object();
-
     public Layer1ApiBarsDemo_Kaziamyr(Layer1ApiProvider provider) {
         this.provider = provider;
         
