@@ -11,7 +11,6 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -268,7 +267,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
         }
     };
 
-    private static final String INDICATOR_NAME_BARS_MAIN = "Bars: main chart";
     private static final String INDICATOR_NAME_BARS_BOTTOM = "Bars (Kaziamyr): bottom panel";
     private static final String INDICATOR_LINE_COLOR_NAME = "Trade markers line";
     private static final Color INDICATOR_LINE_DEFAULT_COLOR = Color.RED;
@@ -289,7 +287,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     private final Layer1ApiProvider provider;
 
     private final Map<String, String> indicatorsFullNameToUserName = new HashMap<>();
-    private final Map<String, String> indicatorsUserNameToFullName = new HashMap<>();
 
     private final Map<String, Double> pipsMap = new ConcurrentHashMap<>();
 
@@ -319,10 +316,10 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
         provider.sendUserMessage(getGeneratorMessage(false));
     }
     
-    private Layer1ApiUserMessageModifyIndicator getUserMessageAdd(String userName, GraphType graphType) {
+    private Layer1ApiUserMessageModifyIndicator getUserMessageAdd(String userName) {
         return Layer1ApiUserMessageModifyIndicator.builder(Layer1ApiBarsDemo_Kaziamyr.class, userName)
                 .setIsAdd(true)
-                .setGraphType(graphType)
+                .setGraphType(GraphType.BOTTOM)
                 .setOnlineCalculatable(this)
                 .setIndicatorColorScheme(new IndicatorColorScheme() {
                     @Override
@@ -352,7 +349,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             UserMessageLayersChainCreatedTargeted message = (UserMessageLayersChainCreatedTargeted) data;
             if (message.targetClass == getClass()) {
                 provider.sendUserMessage(new Layer1ApiDataInterfaceRequestMessage(dataStructureInterface -> this.dataStructureInterface = dataStructureInterface));
-//                addIndicator(INDICATOR_NAME_BARS_MAIN);
                 addIndicator(INDICATOR_NAME_BARS_BOTTOM);
                 provider.sendUserMessage(getGeneratorMessage(true));
             }
@@ -436,21 +432,26 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                 if (data instanceof CustomGeneratedEventAliased) {
                     CustomGeneratedEventAliased aliasedEvent = (CustomGeneratedEventAliased) data;
                     if (indicatorAlias.equals(aliasedEvent.alias) && aliasedEvent.event instanceof BarEvent) {
-                        BarEvent event = (BarEvent)aliasedEvent.event;
-                        /*
-                         * Same idea as in calculateValuesInRange - we don't want to mess up the
-                         * message, but here it's for a different reason. We have a chance of changing
-                         * it before or after it's stored inside bookmap, also resulting in undefined
-                         * behavior.
-                         */
-                        event = new BarEvent(event);
-                        event.setBodyWidthPx(bodyWidth);
+                        BarEvent event = getBarEvent(aliasedEvent);
                         if (isBottomChart) {
                             event.applyPips(pips);
                         }
                         listener.accept(event);
                     }
                 }
+            }
+
+            private BarEvent getBarEvent(CustomGeneratedEventAliased aliasedEvent) {
+                BarEvent event = (BarEvent) aliasedEvent.event;
+                /*
+                 * Same idea as in calculateValuesInRange - we don't want to mess up the
+                 * message, but here it's for a different reason. We have a chance of changing
+                 * it before or after it's stored inside bookmap, also resulting in undefined
+                 * behavior.
+                 */
+                event = new BarEvent(event);
+                event.setBodyWidthPx(bodyWidth);
+                return event;
             }
         };
     }
@@ -510,22 +511,15 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
     public void addIndicator(String userName) {
         Layer1ApiUserMessageModifyIndicator message = null;
-        switch (userName) {
-        case INDICATOR_NAME_BARS_MAIN:
-            message = getUserMessageAdd(userName, GraphType.PRIMARY);
-            break;
-        case INDICATOR_NAME_BARS_BOTTOM:
-            message = getUserMessageAdd(userName, GraphType.BOTTOM);
-            break;
-        default:
-            Log.warn("Unknwon name for marker indicator: " + userName);
-            break;
+        if (userName.equals(INDICATOR_NAME_BARS_BOTTOM)) {
+            message = getUserMessageAdd(userName);
+        } else {
+            Log.warn("Unknown name for marker indicator: " + userName);
         }
         
         if (message != null) {
             synchronized (indicatorsFullNameToUserName) {
                 indicatorsFullNameToUserName.put(message.fullName, message.userName);
-                indicatorsUserNameToFullName.put(message.userName, message.fullName);
             }
             provider.sendUserMessage(message);
         }
@@ -537,7 +531,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             
             private long time = 0;
 
-            private Map<String, BarEvent> aliasToLastBar = new HashMap<>();
+            private final Map<String, BarEvent> aliasToLastBar = new HashMap<>();
             
             @Override
             public void setGeneratedEventsConsumer(Consumer<CustomGeneratedEventAliased> consumer) {
