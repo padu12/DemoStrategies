@@ -178,8 +178,6 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
         @Override
         public Marker makeMarker(Function<Double, Integer> yDataCoordinateToPixelFunction) {
-            int top = yDataCoordinateToPixelFunction.apply(high);
-            int bottom = yDataCoordinateToPixelFunction.apply(low);
             int openPx = yDataCoordinateToPixelFunction.apply(open);
             int closePx = yDataCoordinateToPixelFunction.apply(close);
 
@@ -288,19 +286,18 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
     private static final LastBarProperties lastBarProperties = new LastBarProperties();
 
-    private Layer1ApiProvider provider;
+    private final Layer1ApiProvider provider;
 
-    private Map<String, String> indicatorsFullNameToUserName = new HashMap<>();
-    private Map<String, String> indicatorsUserNameToFullName = new HashMap<>();
+    private final Map<String, String> indicatorsFullNameToUserName = new HashMap<>();
+    private final Map<String, String> indicatorsUserNameToFullName = new HashMap<>();
 
-    private Map<String, Double> pipsMap = new ConcurrentHashMap<>();
+    private final Map<String, Double> pipsMap = new ConcurrentHashMap<>();
 
     private DataStructureInterface dataStructureInterface;
 
-    private BufferedImage tradeIcon = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-    private Map<String, BufferedImage> orderIcons = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, BufferedImage> orderIcons = Collections.synchronizedMap(new HashMap<>());
 
-    private Object locker = new Object();
+    private final Object locker = new Object();
 
     public Layer1ApiBarsDemo_Kaziamyr(Layer1ApiProvider provider) {
         this.provider = provider;
@@ -308,6 +305,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
         ListenableHelper.addListeners(provider, this);
         
         // Prepare trade marker
+        BufferedImage tradeIcon = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
         Graphics graphics = tradeIcon.getGraphics();
         graphics.setColor(Color.BLUE);
         graphics.drawLine(0, 0, 15, 15);
