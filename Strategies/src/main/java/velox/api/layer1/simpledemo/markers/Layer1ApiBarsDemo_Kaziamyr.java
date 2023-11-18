@@ -7,7 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
+import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javax.swing.JCheckBox;
 import javax.swing.JTextField;
 import velox.api.layer1.Layer1ApiAdminAdapter;
 import velox.api.layer1.Layer1ApiFinishable;
@@ -195,41 +196,48 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             graphics.clearRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
 
             Color currentColor = open < close ? Color.GREEN : Color.RED;
-            if (lastBarProperties.isFirst()) {
-                lastBarProperties.setFirst(false);
-                lastBarProperties.setHeight(1);
-                lastBarProperties.setColor(currentColor);
-                lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+            if (LAST_BAR_PROPERTIES.isFirst()) {
+                LAST_BAR_PROPERTIES.setFirst(false);
+                LAST_BAR_PROPERTIES.setHeight(1);
+                LAST_BAR_PROPERTIES.setColor(currentColor);
+                LAST_BAR_PROPERTIES.setCurrentTrendDetectionHealth(trendDetectionLength);
                 return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
             }
 
             int height;
-            int plus = lastBarProperties.getHeight() + ((bodyHigh - bodyLow) / 3);
-            if (lastBarProperties.getColor().equals(currentColor)) {
+            int plus = LAST_BAR_PROPERTIES.getHeight() + ((bodyHigh - bodyLow) / 3);
+            if (LAST_BAR_PROPERTIES.getColor().equals(currentColor)) {
                 height = plus;
-                lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+                LAST_BAR_PROPERTIES.setCurrentTrendDetectionHealth(trendDetectionLength);
                 graphics.setColor(currentColor);
             } else {
-                if (lastBarProperties.getCurrentTrendDetectionHealth() <= 1) {
+                if (LAST_BAR_PROPERTIES.getCurrentTrendDetectionHealth() <= 1) {
                     height = (bodyHigh - bodyLow) / 2;
-                    lastBarProperties.setCurrentTrendDetectionHealth(trendDetectionLength);
+                    LAST_BAR_PROPERTIES.setCurrentTrendDetectionHealth(trendDetectionLength);
                     graphics.setColor(currentColor);
                 } else {
                     height = plus;
-                    lastBarProperties.decreaseCurrentTrendDetectionHealth();
-                    graphics.setColor(lastBarProperties.getColor());
+                    LAST_BAR_PROPERTIES.decreaseCurrentTrendDetectionHealth();
+                    graphics.setColor(LAST_BAR_PROPERTIES.getColor());
                 }
             }
 
-            lastBarProperties.setHeight(height);
-            lastBarProperties.setColor(graphics.getColor());
+            LAST_BAR_PROPERTIES.setHeight(height);
+            LAST_BAR_PROPERTIES.setColor(graphics.getColor());
 
-            height *= 2;
+            if (isDistributionBelowZero) {
+                int offsetY = graphics.getColor().equals(Color.GREEN) ? 100 : 100 - height;
+                graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
 
-            graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
+                return new Marker(ZERO_MARKER_Y, iconOffsetX, offsetY, bufferedImage);
+            } else {
+                height *= 2;
 
-            graphics.dispose();
-            return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
+                graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
+
+                graphics.dispose();
+                return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
+            }
         }
 
         /**
@@ -278,11 +286,14 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     private static final int MIN_BODY_WIDTH = 1;
     private static final long CANDLE_INTERVAL_NS = TimeUnit.SECONDS.toNanos(60);
     private static final int DEFAULT_TREND_DETECTION_LENGTH = 2;
+    private static final boolean DEFAULT_DISTRIBUTION_BELOW_ZERO = false;
     private static int trendDetectionLength = DEFAULT_TREND_DETECTION_LENGTH;
-    private static final JTextField textField = new JTextField();
-    private static final Button button = new Button("Apply");
+    private static boolean isDistributionBelowZero = DEFAULT_DISTRIBUTION_BELOW_ZERO;
+    private static final JCheckBox DISTRIBUTION_BELOW_ZERO_CHECK_BOX = new JCheckBox();
+    private static final JTextField TREND_DETECTION_LENGTH_TEXT_FIELD = new JTextField();
+    private static final Button APPLY_BUTTON = new Button("Apply");
 
-    private static final LastBarProperties lastBarProperties = new LastBarProperties();
+    private static final LastBarProperties LAST_BAR_PROPERTIES = new LastBarProperties();
 
     private final Layer1ApiProvider provider;
 
@@ -377,16 +388,16 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             CalculatedResultListener listener) {
         String userName = indicatorsFullNameToUserName.get(indicatorName);
         boolean isBottomChart = userName.equals(INDICATOR_NAME_BARS_BOTTOM);
-        
+
         Double pips = pipsMap.get(indicatorAlias);
-        
+
         List<TreeResponseInterval> result = dataStructureInterface.get(Layer1ApiBarsDemo_Kaziamyr.class, TREE_NAME, t0,
                 intervalWidth, intervalsNumber, indicatorAlias, INTERESTING_CUSTOM_EVENTS);
-        
+
         int bodyWidth = getBodyWidth(intervalWidth);
-        
+
         for (int i = 1; i <= intervalsNumber; i++) {
-            
+
             BarEvent value = getBarEvent(result.get(i));
             if (value != null) {
                 /*
@@ -396,7 +407,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                  * time, so the behavior wont be predictable.
                  */
                 value = new BarEvent(value);
-                
+
                 value.setBodyWidthPx(bodyWidth);
                 if (isBottomChart) {
                     value.applyPips(pips);
@@ -406,7 +417,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                 listener.provideResponse(Double.NaN);
             }
         }
-        
+
         listener.setCompleted();
     }
     
@@ -458,9 +469,9 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == button) {
-            System.out.println("Change multiplier to " + textField.getText());
-            trendDetectionLength = Integer.parseInt(textField.getText());
+        if (e.getSource() == APPLY_BUTTON) {
+            trendDetectionLength = Integer.parseInt(TREND_DETECTION_LENGTH_TEXT_FIELD.getText());
+            isDistributionBelowZero = DISTRIBUTION_BELOW_ZERO_CHECK_BOX.isSelected();
         }
     }
 
@@ -475,19 +486,36 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
         gbConst.gridx = 0;
         gbConst.gridy = 0;
         gbConst.weightx = 1;
-        gbConst.insets = new Insets(5, 5, 5, 5);
-        gbConst.fill = 2;
-        textField.setPreferredSize(new Dimension(100,40));
-        textField.addActionListener(this);
-        panel.add(textField, gbConst);
+        gbConst.fill = 1;
+        Label trendDetectionLengthLabel = new Label();
+        trendDetectionLengthLabel.setText("TrendDetectionLength");
+        panel.add(trendDetectionLengthLabel, gbConst);
+
+        gbConst = new GridBagConstraints();
+        gbConst.gridx = 1;
+        gbConst.gridy = 0;
+        gbConst.weightx = 1;
+        gbConst.fill = 1;
+        TREND_DETECTION_LENGTH_TEXT_FIELD.setPreferredSize(new Dimension(50,30));
+        TREND_DETECTION_LENGTH_TEXT_FIELD.setText(String.valueOf(trendDetectionLength));
+        TREND_DETECTION_LENGTH_TEXT_FIELD.addActionListener(this);
+        panel.add(TREND_DETECTION_LENGTH_TEXT_FIELD, gbConst);
 
         gbConst = new GridBagConstraints();
         gbConst.gridx = 0;
         gbConst.gridy = 1;
+        gbConst.weightx = 0.3;
+        DISTRIBUTION_BELOW_ZERO_CHECK_BOX.setText("ShowDistributionBelowZero");
+        DISTRIBUTION_BELOW_ZERO_CHECK_BOX.addActionListener(this);
+        panel.add(DISTRIBUTION_BELOW_ZERO_CHECK_BOX, gbConst);
+
+        gbConst = new GridBagConstraints();
+        gbConst.gridx = 2;
+        gbConst.gridy = 2;
         gbConst.weightx = 1;
-        gbConst.insets = new Insets(5, 5, 5, 5);
-        button.addActionListener(this);
-        panel.add(button, gbConst);
+        APPLY_BUTTON.addActionListener(this);
+        APPLY_BUTTON.setForeground(Color.BLACK);
+        panel.add(APPLY_BUTTON, gbConst);
 
         return new StrategyPanel[] {panel};
     }
