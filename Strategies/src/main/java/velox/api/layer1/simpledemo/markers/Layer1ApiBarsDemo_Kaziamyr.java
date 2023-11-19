@@ -225,19 +225,16 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
             LAST_BAR_PROPERTIES.setHeight(height);
             LAST_BAR_PROPERTIES.setColor(graphics.getColor());
 
+            int offsetY = ZERO_OFFSET_Y;
             if (isDistributionBelowZero) {
-                int offsetY = graphics.getColor().equals(Color.GREEN) ? 100 : 100 - height;
-                graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
-
-                return new Marker(ZERO_MARKER_Y, iconOffsetX, offsetY, bufferedImage);
+                offsetY = graphics.getColor().equals(Color.GREEN) ? 100 : 100 - height;
             } else {
                 height *= 2;
-
-                graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
-
-                graphics.dispose();
-                return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
             }
+            graphics.fillRect(0, imageHeight - height, bodyWidthPx, height);
+            graphics.dispose();
+
+            return new Marker(ZERO_MARKER_Y, iconOffsetX, offsetY, bufferedImage);
         }
 
         /**
