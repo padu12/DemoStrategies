@@ -466,10 +466,16 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == APPLY_BUTTON) {
-            trendDetectionLength = Integer.parseInt(TREND_DETECTION_LENGTH_TEXT_FIELD.getText());
+        if (e.getSource() == APPLY_BUTTON ) {
+            if (isTrendDetectionLengthInputValid()) {
+                trendDetectionLength = Integer.parseInt(TREND_DETECTION_LENGTH_TEXT_FIELD.getText());
+            }
             isDistributionBelowZero = DISTRIBUTION_BELOW_ZERO_CHECK_BOX.isSelected();
         }
+    }
+
+    private boolean isTrendDetectionLengthInputValid() {
+        return TREND_DETECTION_LENGTH_TEXT_FIELD.getText().matches("\\d+");
     }
 
     @Override
