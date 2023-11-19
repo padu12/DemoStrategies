@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -20,7 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.swing.JCheckBox;
-import javax.swing.JTextField;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import velox.api.layer1.Layer1ApiAdminAdapter;
 import velox.api.layer1.Layer1ApiFinishable;
 import velox.api.layer1.Layer1ApiInstrumentListener;
@@ -287,7 +289,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     private static int trendDetectionLength = DEFAULT_TREND_DETECTION_LENGTH;
     private static boolean isDistributionBelowZero = DEFAULT_DISTRIBUTION_BELOW_ZERO;
     private static final JCheckBox DISTRIBUTION_BELOW_ZERO_CHECK_BOX = new JCheckBox();
-    private static final JTextField TREND_DETECTION_LENGTH_TEXT_FIELD = new JTextField();
+    private static final JSpinner TREND_DETECTION_LENGTH_SPINNER = new JSpinner();
     private static final Button APPLY_BUTTON = new Button("Apply");
 
     private static final LastBarProperties LAST_BAR_PROPERTIES = new LastBarProperties();
@@ -467,15 +469,10 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == APPLY_BUTTON ) {
-            if (isTrendDetectionLengthInputValid()) {
-                trendDetectionLength = Integer.parseInt(TREND_DETECTION_LENGTH_TEXT_FIELD.getText());
-            }
+            trendDetectionLength =
+                    Integer.parseInt(TREND_DETECTION_LENGTH_SPINNER.getValue().toString());
             isDistributionBelowZero = DISTRIBUTION_BELOW_ZERO_CHECK_BOX.isSelected();
         }
-    }
-
-    private boolean isTrendDetectionLengthInputValid() {
-        return TREND_DETECTION_LENGTH_TEXT_FIELD.getText().matches("\\d+");
     }
 
     @Override
@@ -489,33 +486,41 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
         gbConst.gridx = 0;
         gbConst.gridy = 0;
         gbConst.weightx = 1;
-        gbConst.fill = 1;
+        gbConst.anchor = GridBagConstraints.EAST;
         Label trendDetectionLengthLabel = new Label();
-        trendDetectionLengthLabel.setText("TrendDetectionLength");
+        trendDetectionLengthLabel.setText("TrendDetectionLength:");
         panel.add(trendDetectionLengthLabel, gbConst);
 
         gbConst = new GridBagConstraints();
         gbConst.gridx = 1;
         gbConst.gridy = 0;
-        gbConst.weightx = 1;
-        gbConst.fill = 1;
-        TREND_DETECTION_LENGTH_TEXT_FIELD.setPreferredSize(new Dimension(50,30));
-        TREND_DETECTION_LENGTH_TEXT_FIELD.setText(String.valueOf(trendDetectionLength));
-        TREND_DETECTION_LENGTH_TEXT_FIELD.addActionListener(this);
-        panel.add(TREND_DETECTION_LENGTH_TEXT_FIELD, gbConst);
+        gbConst.weightx = 2;
+        gbConst.fill = GridBagConstraints.HORIZONTAL;
+        gbConst.insets = new Insets(5, 5, 5, 5);
+        TREND_DETECTION_LENGTH_SPINNER.setPreferredSize(new Dimension(50,30));
+        TREND_DETECTION_LENGTH_SPINNER.setModel(new SpinnerNumberModel(Long.valueOf(trendDetectionLength), Long.valueOf(0), Long.valueOf(Long.MAX_VALUE), Long.valueOf(1)));
+        panel.add(TREND_DETECTION_LENGTH_SPINNER, gbConst);
 
         gbConst = new GridBagConstraints();
         gbConst.gridx = 0;
         gbConst.gridy = 1;
-        gbConst.weightx = 0.3;
-        DISTRIBUTION_BELOW_ZERO_CHECK_BOX.setText("ShowDistributionBelowZero");
+        gbConst.anchor = GridBagConstraints.EAST;
+        Label showDistributionBelowZero = new Label();
+        showDistributionBelowZero.setText("ShowDistributionBelowZero");
+        panel.add(showDistributionBelowZero, gbConst);
+
+        gbConst = new GridBagConstraints();
+        gbConst.gridx = 1;
+        gbConst.gridy = 1;
+        gbConst.insets = new Insets(5, 5, 5, 5);
         DISTRIBUTION_BELOW_ZERO_CHECK_BOX.addActionListener(this);
         panel.add(DISTRIBUTION_BELOW_ZERO_CHECK_BOX, gbConst);
 
         gbConst = new GridBagConstraints();
-        gbConst.gridx = 2;
+        gbConst.gridx = 1;
         gbConst.gridy = 2;
-        gbConst.weightx = 1;
+        gbConst.fill = GridBagConstraints.HORIZONTAL;
+        gbConst.insets = new Insets(5, 5, 5, 5);
         APPLY_BUTTON.addActionListener(this);
         APPLY_BUTTON.setForeground(Color.BLACK);
         panel.add(APPLY_BUTTON, gbConst);
