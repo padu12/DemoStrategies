@@ -206,10 +206,10 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                 return new Marker(ZERO_MARKER_Y, iconOffsetX, ZERO_OFFSET_Y, bufferedImage);
             }
 
-            int height;
-            int plus = LAST_BAR_PROPERTIES.getHeight() + ((bodyHigh - bodyLow) / 3);
+            int height = LAST_BAR_PROPERTIES.getHeight();
+            int additionalHeight = (bodyHigh - bodyLow) / 3;
             if (LAST_BAR_PROPERTIES.getColor().equals(currentColor)) {
-                height = plus;
+                height += additionalHeight;
                 LAST_BAR_PROPERTIES.setCurrentTrendDetectionHealth(trendDetectionLength);
                 graphics.setColor(currentColor);
             } else {
@@ -218,7 +218,7 @@ public class Layer1ApiBarsDemo_Kaziamyr implements
                     LAST_BAR_PROPERTIES.setCurrentTrendDetectionHealth(trendDetectionLength);
                     graphics.setColor(currentColor);
                 } else {
-                    height = plus;
+                    height += additionalHeight;
                     LAST_BAR_PROPERTIES.decreaseCurrentTrendDetectionHealth();
                     graphics.setColor(LAST_BAR_PROPERTIES.getColor());
                 }
